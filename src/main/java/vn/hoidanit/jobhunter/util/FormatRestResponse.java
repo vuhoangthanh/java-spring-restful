@@ -34,7 +34,9 @@ public class FormatRestResponse implements ResponseBodyAdvice {
             return body;
         }
 
-        if (status >= 400) {
+        if (status >= 400)
+
+        {
             // case error
             return body;
 
