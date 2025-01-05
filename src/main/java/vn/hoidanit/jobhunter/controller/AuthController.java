@@ -1,5 +1,8 @@
 package vn.hoidanit.jobhunter.controller;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -11,9 +14,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import vn.hoidanit.jobhunter.domain.User;
 import vn.hoidanit.jobhunter.domain.dto.LoginDTO;
 import vn.hoidanit.jobhunter.domain.dto.RestloginDTO;
+import vn.hoidanit.jobhunter.service.UserService;
 import vn.hoidanit.jobhunter.util.SecurityUtil;
+import vn.hoidanit.jobhunter.util.annotation.ApiMessage;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -21,13 +30,19 @@ public class AuthController {
 
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
     private final SecurityUtil securityUtil;
+    private final UserService userSerivce;
 
-    public AuthController(AuthenticationManagerBuilder authenticationManagerBuilder, SecurityUtil securityUtil) {
+    @Value("${hoidanit.jwt.refresh-token-validity-in-seconds}")
+    private long refreshTokenExpiration;
+
+    public AuthController(AuthenticationManagerBuilder authenticationManagerBuilder, SecurityUtil securityUtil,
+            UserService userSerivce) {
         this.authenticationManagerBuilder = authenticationManagerBuilder;
         this.securityUtil = securityUtil;
+        this.userSerivce = userSerivce;
     }
 
-    @PostMapping("/login")
+    @PostMapping("/auth/login")
     public ResponseEntity<RestloginDTO> login(@Valid @RequestBody LoginDTO loginDto) {
 
         // Nạp input gồm user/password vào Security
@@ -38,15 +53,56 @@ public class AuthController {
         // Xác thực người dùng => Cần viết hàm loadUserByUsername
         Authentication authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
 
-        // create a token
-        String access_token = this.securityUtil.createToken(authentication);
         // set info to securityContext
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         // format form output
         RestloginDTO res = new RestloginDTO();
+        User currentUserDB = this.userSerivce.handleGetUserByUsername(loginDto.getUsername());
+        if (currentUserDB != null) {
+            RestloginDTO.UserLogin userLogin = new RestloginDTO.UserLogin(
+                    currentUserDB.getId(),
+                    currentUserDB.getName(),
+                    currentUserDB.getEmail());
+            res.setUser(userLogin);
+        }
+        // create a token
+        String access_token = this.securityUtil.createAccessToken(authentication, res.getUser());
         res.setAccessToken(access_token);
 
-        return ResponseEntity.ok().body(res);
+        // create refresh token
+        String refresh_token = this.securityUtil.createRefreshToken(loginDto.getUsername(), res);
+
+        // update user
+        this.userSerivce.updateUserToken(refresh_token, loginDto.getUsername());
+
+        // set cookies
+        ResponseCookie resCookies = ResponseCookie
+                .from("refresh_token", refresh_token)
+                .httpOnly(true)
+                .secure(true) // chỉ cho phép https (localhost true or false đều được)
+                .path("/") // api bắt đầu bằng path mới gửi cookies
+                .maxAge(refreshTokenExpiration) // thời gian hết hạn của cookies (s)
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, resCookies.toString())
+                .body(res);
     }
+
+    @GetMapping("/auth/account")
+    @ApiMessage("Get Account Message")
+    public ResponseEntity<RestloginDTO.UserLogin> getAccount() {
+        String email = SecurityUtil.getCurrentUserLogin().isPresent() ? SecurityUtil.getCurrentUserLogin().get() : "";
+
+        User currentUserDB = this.userSerivce.handleGetUserByUsername(email);
+        RestloginDTO.UserLogin userLogin = new RestloginDTO.UserLogin();
+        if (currentUserDB != null) {
+            userLogin.setId(currentUserDB.getId());
+            userLogin.setName(currentUserDB.getName());
+            userLogin.setEmail(currentUserDB.getEmail());
+        }
+        return ResponseEntity.ok().body(userLogin);
+    }
+
 }
