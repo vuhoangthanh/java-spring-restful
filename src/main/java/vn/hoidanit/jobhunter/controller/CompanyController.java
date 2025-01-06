@@ -69,7 +69,7 @@ public class CompanyController {
     public ResponseEntity<Company> updateCompany(@Valid @RequestBody Company reqCompany) {
 
         Company company = this.companyService.hanleUpdateCompany(reqCompany);
-        return ResponseEntity.status(HttpStatus.OK).body(company);
+        return ResponseEntity.ok(company);
     }
 
     @DeleteMapping("/companies/{id}")
