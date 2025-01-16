@@ -9,16 +9,20 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import vn.hoidanit.jobhunter.domain.Company;
-import vn.hoidanit.jobhunter.domain.dto.ResultPaginationDTO;
+import vn.hoidanit.jobhunter.domain.User;
+import vn.hoidanit.jobhunter.domain.response.ResultPaginationDTO;
 import vn.hoidanit.jobhunter.repository.CompanyRepository;
+import vn.hoidanit.jobhunter.repository.UserRepository;
 
 @Service
 public class CompanyService {
 
     private final CompanyRepository companyRepository;
+    private final UserRepository userRepository;
 
-    public CompanyService(CompanyRepository companyRepository) {
+    public CompanyService(CompanyRepository companyRepository, UserRepository userRepository) {
         this.companyRepository = companyRepository;
+        this.userRepository = userRepository;
     }
 
     public ResultPaginationDTO fetchAllCompany(Specification<Company> spec, Pageable pageable) {
@@ -64,6 +68,14 @@ public class CompanyService {
     }
 
     public void handleDeleteCompany(long id) {
+        Optional<Company> companyOptional = this.companyRepository.findById(id);
+        if (companyOptional.isPresent()) {
+            Company company = companyOptional.get();
+
+            List<User> users = this.userRepository.findByCompany(company);
+            this.userRepository.deleteAll(users);
+        }
+
         this.companyRepository.deleteById(id);
     }
 }

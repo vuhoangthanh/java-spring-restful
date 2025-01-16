@@ -1,16 +1,40 @@
-package vn.hoidanit.jobhunter.domain.dto;
+package vn.hoidanit.jobhunter.domain.response;
 
 import java.time.Instant;
 
 import vn.hoidanit.jobhunter.util.constant.GenderEnum;
 
-public class ResUpdateUserDTO {
+public class ResUserDTO {
     private long id;
     private String name;
+    private String email;
     private int age;
     private GenderEnum gender;
     private String address;
+    private Instant createdAt;
     private Instant updateAt;
+    private CompanyUser company;
+
+    public static class CompanyUser {
+        private long id;
+        private String name;
+
+        public long getId() {
+            return id;
+        }
+
+        public void setId(long id) {
+            this.id = id;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+    }
 
     public long getId() {
         return id;
@@ -26,6 +50,14 @@ public class ResUpdateUserDTO {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public int getAge() {
@@ -52,12 +84,28 @@ public class ResUpdateUserDTO {
         this.address = address;
     }
 
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
     public Instant getUpdateAt() {
         return updateAt;
     }
 
     public void setUpdateAt(Instant updateAt) {
         this.updateAt = updateAt;
+    }
+
+    public CompanyUser getCompany() {
+        return company;
+    }
+
+    public void setCompany(CompanyUser company) {
+        this.company = company;
     }
 
 }
